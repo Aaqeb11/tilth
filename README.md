@@ -38,6 +38,30 @@ This isn't meant to just be a shortcut for typing `terraform apply` faster. The 
 - Anyone who's tired of writing one-off wrapper scripts per Terraform project just to handle variable input
 - Open-source Terraform projects that want a friendlier on-ramp for new contributors
 
+## Proposed Architecture Overview
+
+At a high level, `tilth` acts as an intelligent wrapper around the Terraform binary:
+1. **Discovery (HCL Parsing):** When pointed to a directory, it uses an HCL parser (like `hcl-rs`) to read the `.tf` configuration files and extract required and optional variables, their types, and descriptions.
+2. **Interactive Prompting:** The CLI interactively prompts the user for missing variables, validating inputs against the discovered types.
+3. **Command Generation:** It constructs the safe, fully-qualified `terraform` execution command (e.g., injecting variables via `-var` flags or temporary `.tfvars` files).
+4. **Execution & Guardrails:** It spawns a child process to run the Terraform command while enforcing safety gates (e.g., requiring explicit confirmation before a `destroy` or defaulting to `plan` first).
+
+## Basic Usage
+
+```bash
+# Basic usage
+tilth apply ./infra/vpc
+
+# Plan first (safe default)
+tilth plan ./modules/eks
+
+# Destroy with extra confirmation gate
+tilth destroy ./infra/vpc
+
+# Inspect variables without running
+tilth inspect ./infra/vpc
+```
+
 ---
 
 *This README describes the intent and problem tilth aims to solve. Implementation details and usage instructions will follow as the project develops.*
