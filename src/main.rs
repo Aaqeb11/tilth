@@ -1,16 +1,34 @@
-fn main() {
-    let input = r#"variable "instance_type" {
-      type        = string
-      description = "The size of the EC2 instance"
-      default     = "t3.micro" # Optional: Used if no other value is given
-    }"#;
+mod parser;
 
-    match hcl::parse(input) {
-        Ok(parsed) => {
-            println!("Successfully parsed HCL:\n{:#?}", parsed);
-        }
-        Err(e) => {
-            eprintln!("Failed to parse HCL: {}", e);
+use clap::{Parser, Subcommand};
+use std::path::PathBuf;
+
+#[derive(Parser)]
+#[command(name = "tilth")]
+#[command(about = "A safe and interactive wrapper for Terraform", long_about = None)]
+struct Cli {
+    #[command(subcommand)]
+    command: Commands,
+}
+
+#[derive(Subcommand)]
+enum Commands {
+    Inspect {
+        #[arg(default_value = ".")]
+        path: PathBuf,
+    },
+}
+
+fn main() {
+    let cli = Cli::parse();
+
+    match &cli.command {
+        Commands::Inspect { path } => {
+            println!("Inspecting directory: {}", path.display());
+
+            let variables = parser::discover_variables(path);
+
+            println!("Discovered Variables: {:#?}", variables);
         }
     }
 }

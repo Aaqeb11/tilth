@@ -18,48 +18,44 @@ Instead of building a CLI that needs to already know a script's variables, this 
 
 Point the CLI at any Terraform directory, and it will:
 
-- Automatically discover the variables that script needs — no prior setup or configuration required
-- Prompt for each one interactively, with context (description, type, whether it's required)
+- Automatically discover the variables that script needs (by parsing the HCL) — no prior setup or configuration required
+- Prompt for each one interactively, with context (description, type, default value)
 - Run the underlying Terraform commands on the user's behalf, in a controlled, reviewable way
 
 The goal is a tool that works instantly with *any* Terraform setup — not just ones it's been pre-configured for.
 
-## The Intent
+## Current Progress
 
-This isn't meant to just be a shortcut for typing `terraform apply` faster. The real purpose is:
-
-1. **Generalize across any Terraform project** — one CLI that adapts to whatever script it's pointed at, instead of needing custom wrapper code per project.
-2. **Act as a guardrail** — teams can standardize on running infrastructure changes through this CLI instead of raw Terraform commands, making runs more consistent, reviewable, and safer.
-3. **Lower the barrier to entry** — anyone can clone a Terraform project, point the CLI at it, and immediately know what's needed to run it — no digging through `.tf` files first.
-
-## Who This Is For
-
-- Teams who want a safer, more consistent way for engineers to run shared Terraform infrastructure
-- Anyone who's tired of writing one-off wrapper scripts per Terraform project just to handle variable input
-- Open-source Terraform projects that want a friendlier on-ramp for new contributors
+- [x] **Phase 1: Discovery** - `tilth` can successfully scan a target directory (shallow scan), parse the `.tf` files using `hcl-rs`, and extract variable names, descriptions, types, and default values. Try `tilth inspect <dir>`.
+- [ ] **Phase 2: Interactive Prompting** - (Next up) Taking the discovered variables and using a library like `inquire` to build dynamic terminal prompts.
+- [ ] **Phase 3: Execution Wrapper** - Passing the collected variables safely to the underlying `terraform` binary (e.g. generating a temporary `.tfvars` file) and passing through arbitrary flags (like `-target`).
+- [ ] **Phase 4: Guardrails** - Implementing the specific safety flows for `plan`, `apply`, and `destroy`.
 
 ## Proposed Architecture Overview
 
 At a high level, `tilth` acts as an intelligent wrapper around the Terraform binary:
-1. **Discovery (HCL Parsing):** When pointed to a directory, it uses an HCL parser (like `hcl-rs`) to read the `.tf` configuration files and extract required and optional variables, their types, and descriptions.
+1. **Discovery (HCL Parsing):** When pointed to a directory, it uses an HCL parser (like `hcl-rs`) to read the `.tf` configuration files and extract required and optional variables, their types, and descriptions. It respects Terraform's module boundaries by only performing a shallow scan of the provided Root Module.
 2. **Interactive Prompting:** The CLI interactively prompts the user for missing variables, validating inputs against the discovered types.
-3. **Command Generation:** It constructs the safe, fully-qualified `terraform` execution command (e.g., injecting variables via `-var` flags or temporary `.tfvars` files).
+3. **Command Generation:** It constructs the safe, fully-qualified `terraform` execution command (e.g., injecting variables via temporary `.tfvars` files and passing through targeting flags).
 4. **Execution & Guardrails:** It spawns a child process to run the Terraform command while enforcing safety gates (e.g., requiring explicit confirmation before a `destroy` or defaulting to `plan` first).
 
-## Basic Usage
+## Basic Usage (Current & Planned)
 
 ```bash
-# Basic usage
+# [IMPLEMENTED] Inspect variables without running
+cargo run -- inspect ./infra/vpc
+
+# [PLANNED] Basic usage
 tilth apply ./infra/vpc
 
-# Plan first (safe default)
+# [PLANNED] Plan first (safe default)
 tilth plan ./modules/eks
 
-# Destroy with extra confirmation gate
+# [PLANNED] Destroy with extra confirmation gate
 tilth destroy ./infra/vpc
 
-# Inspect variables without running
-tilth inspect ./infra/vpc
+# [PLANNED] Passing native terraform flags (e.g. targeting child modules)
+tilth apply ./infra/vpc -- -target=module.my_database
 ```
 
 ---
