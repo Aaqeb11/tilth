@@ -1,4 +1,5 @@
 mod parser;
+mod prompter;
 
 use clap::{Parser, Subcommand};
 use std::path::PathBuf;
@@ -17,6 +18,10 @@ enum Commands {
         #[arg(default_value = ".")]
         path: PathBuf,
     },
+    Prompt {
+        #[arg(default_value = ".")]
+        path: PathBuf,
+    },
 }
 
 fn main() {
@@ -29,6 +34,16 @@ fn main() {
             let variables = parser::discover_variables(path);
 
             println!("Discovered Variables: {:#?}", variables);
+        }
+        Commands::Prompt { path } => {
+            let variables = parser::discover_variables(path);
+            if variables.is_empty() {
+                println!("No variables found in this directory.");
+                return;
+            }
+
+            let answers = prompter::prompt_for_variables(variables);
+            println!("Final Answers: {:#?}", answers);
         }
     }
 }
