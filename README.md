@@ -31,7 +31,7 @@ Download the latest pre-compiled binary for your operating system from the [GitH
 **macOS / Linux:**
 ```bash
 # Download the binary (example for macOS ARM64 / Apple Silicon)
-curl -LO https://github.com/Aaqeb11/tilth/releases/download/v0.1.0/tilth-darwin-arm64
+curl -LO https://github.com/Aaqeb11/tilth/releases/download/v0.1.1/tilth-darwin-arm64
 
 # Make it executable
 chmod +x tilth-darwin-arm64
