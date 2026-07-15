@@ -2,6 +2,10 @@
 name = "tilth"
 version = "0.1.0"
 edition = "2024"
+description = "A CLI that makes running Terraform safer and easier for teams — without requiring anyone to memorize or hardcode variables in advance."
+repository = "https://github.com/Aaqeb11/tilth"
+license = "MIT"
+keywords = ["terraform", "cli", "infrastructure", "wrapper", "hcl"]
 
 [dependencies]
 clap = { version = "4.6.1", features = ["derive"] }
