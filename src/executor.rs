@@ -62,3 +62,43 @@ pub fn run_terraform(
     // `temp_vars` goes out of scope here, and the Drop trait automatically deletes the file!
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::env;
+
+    #[test]
+    fn test_temp_tfvars_lifecycle() {
+        let mut vars = HashMap::new();
+        vars.insert("test_key".to_string(), "test_value".to_string());
+        vars.insert("number_key".to_string(), "42".to_string());
+
+        let temp_dir = env::temp_dir();
+        let expected_file_path = temp_dir.join("tilth-temp.tfvars.json");
+
+        // Ensure the file doesn't already exist from a previous failed test run
+        let _ = fs::remove_file(&expected_file_path);
+
+        {
+            // 1. Create the TempTfVars
+            let temp_vars = TempTfVars::create(&temp_dir, &vars).expect("Failed to create temp vars");
+
+            // 2. Verify file path matches
+            assert_eq!(temp_vars.path, expected_file_path);
+
+            // 3. Verify file exists on disk
+            assert!(temp_vars.path.exists(), "Temp file was not created");
+
+            // 4. Verify file contents are valid JSON
+            let content = fs::read_to_string(&temp_vars.path).expect("Failed to read temp file");
+            let parsed_json: serde_json::Value = serde_json::from_str(&content).expect("Invalid JSON");
+            
+            assert_eq!(parsed_json["test_key"], "test_value");
+            assert_eq!(parsed_json["number_key"], "42");
+        } // `temp_vars` goes out of scope here! The Drop trait should trigger.
+
+        // 5. Verify the file was deleted automatically
+        assert!(!expected_file_path.exists(), "Temp file was not deleted after going out of scope");
+    }
+}

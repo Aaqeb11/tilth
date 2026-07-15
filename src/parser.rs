@@ -102,3 +102,61 @@ fn extract_variables(body: hcl::Body) -> Vec<TerraformVariable> {
     }
     vars
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_extract_variables() {
+        let hcl_input = r#"
+            variable "instance_type" {
+                type        = string
+                description = "The size of the EC2 instance"
+                default     = "t3.micro"
+            }
+
+            variable "region" {
+                type        = string
+            }
+
+            variable "enable_monitoring" {
+                default = true
+            }
+
+            # This block should be ignored
+            resource "aws_instance" "web" {
+                ami           = "ami-123456"
+                instance_type = var.instance_type
+            }
+
+            # This block should be ignored
+            output "instance_ip" {
+                value = aws_instance.web.public_ip
+            }
+        "#;
+
+        let parsed_body = hcl::parse(hcl_input).expect("Failed to parse HCL in test");
+        let vars = extract_variables(parsed_body);
+
+        assert_eq!(vars.len(), 3, "Should extract exactly 3 variables");
+
+        // Check first variable (all fields present)
+        assert_eq!(vars[0].name, "instance_type");
+        assert_eq!(vars[0].var_type.as_deref(), Some("string"));
+        assert_eq!(vars[0].description.as_deref(), Some("The size of the EC2 instance"));
+        assert_eq!(vars[0].default_value.as_deref(), Some("t3.micro"));
+
+        // Check second variable (only type present)
+        assert_eq!(vars[1].name, "region");
+        assert_eq!(vars[1].var_type.as_deref(), Some("string"));
+        assert_eq!(vars[1].description, None);
+        assert_eq!(vars[1].default_value, None);
+
+        // Check third variable (only default present)
+        assert_eq!(vars[2].name, "enable_monitoring");
+        assert_eq!(vars[2].var_type, None);
+        assert_eq!(vars[2].description, None);
+        assert_eq!(vars[2].default_value.as_deref(), Some("true"));
+    }
+}
