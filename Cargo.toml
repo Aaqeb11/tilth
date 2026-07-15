@@ -1,11 +1,17 @@
 [package]
-name = "tilth"
+name = "tilth-tf"
 version = "0.1.0"
 edition = "2024"
 description = "A CLI that makes running Terraform safer and easier for teams — without requiring anyone to memorize or hardcode variables in advance."
 repository = "https://github.com/Aaqeb11/tilth"
+readme = "README.md"
 license = "MIT"
 keywords = ["terraform", "cli", "infrastructure", "wrapper", "hcl"]
+categories = ["command-line-utilities"]
+
+[[bin]]
+name = "tilth"
+path = "src/main.rs"
 
 [dependencies]
 clap = { version = "4.6.1", features = ["derive"] }
