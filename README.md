@@ -51,9 +51,9 @@ sudo mv tilth-darwin-arm64 /usr/local/bin/tilth
 
 ### Option 2: Using Cargo (Rust toolchain)
 
-If you have Rust installed, you can install directly from the repository:
+If you have Rust installed, you can install directly from crates.io
 ```bash
-cargo install --git https://github.com/Aaqeb11/tilth
+cargo install tilth-tf
 ```
 
 ## Usage
