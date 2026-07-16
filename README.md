@@ -106,7 +106,7 @@ Plan: 12 to add, 0 to change, 0 to destroy.
 
 ## How it Works Under the Hood
 
-1. **Discovery:** `tilth` does a shallow scan of the provided directory to respect Terraform's strict Root Module boundaries. It parses the HCL AST to extract variable definitions.
+1. **Discovery (Shallow Scanning):** `tilth` explicitly performs a *shallow scan* of the target directory to extract variables. It intentionally does not recursively scan subdirectories (child modules). This perfectly mirrors Terraform's own strict "Root Module" boundaries. In Terraform, a root module must supply all required variables to any child modules it calls. If `tilth` prompted you for a child module's internal variables directly, it would bypass the root module's configuration and cause Terraform to crash (often due to missing provider contexts).
 2. **Prompting:** Uses an interactive terminal UI to ask the user for values. Skips prompting if no variables are required.
 3. **Execution:** Serializes the answers to a temporary `.tfvars.json` file inside the target directory, spawns the `terraform` process with inherited I/O so you see the native output, and automatically deletes the temporary file upon completion (or cancellation).
 
