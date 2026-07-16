@@ -110,6 +110,76 @@ Plan: 12 to add, 0 to change, 0 to destroy.
 2. **Prompting:** Uses an interactive terminal UI to ask the user for values. Skips prompting if no variables are required.
 3. **Execution:** Serializes the answers to a temporary `.tfvars.json` file inside the target directory, spawns the `terraform` process with inherited I/O so you see the native output, and automatically deletes the temporary file upon completion (or cancellation).
 
+## Working with Modules
+ 
+Because `tilth` performs a **shallow scan** of only the root module directory (see [How it Works](#how-it-works-under-the-hood) above), it only discovers variables declared in the root's own `variables.tf` / `main.tf` — it does **not** recurse into child modules to find their variables.
+ 
+### Why shallow scan?
+ 
+`tilth` explicitly performs a *shallow scan* of the target directory to extract variables. It intentionally does not recursively scan subdirectories (child modules). This perfectly mirrors Terraform's own strict "Root Module" boundaries. In Terraform, a root module must supply all required variables to any child modules it calls. If `tilth` prompted you for a child module's internal variables directly, it would bypass the root module's configuration and cause Terraform to crash (often due to missing provider contexts).
+ 
+This means: if your root `main.tf` calls a child module but doesn't pass a particular variable through, `tilth` won't know that variable exists, and it won't prompt for it or include it in the generated `.tfvars.json`.
+ 
+**The fix is standard Terraform practice anyway** — declare a root-level variable for anything a child module needs, and pass it through explicitly:
+ 
+```
+infra/
+├── main.tf          # root module — calls child modules
+├── variables.tf      # root-level variable declarations
+└── modules/
+    ├── vpc/
+    │   ├── main.tf
+    │   └── variables.tf   # tilth does NOT scan this directly
+    └── eks/
+        ├── main.tf
+        └── variables.tf   # tilth does NOT scan this directly
+```
+ 
+**`modules/vpc/variables.tf`** (child module):
+```hcl
+variable "cidr_block" {
+  description = "CIDR block for the VPC"
+  type        = string
+}
+```
+ 
+**`variables.tf`** (root — this is what `tilth` actually reads):
+```hcl
+variable "vpc_cidr_block" {
+  description = "CIDR block for the VPC"
+  type        = string
+  default     = "10.0.0.0/16"
+}
+```
+ 
+**`main.tf`** (root — wires the root variable into the module):
+```hcl
+module "vpc" {
+  source     = "./modules/vpc"
+  cidr_block = var.vpc_cidr_block
+}
+ 
+module "eks" {
+  source = "./modules/eks"
+  # ...same pattern for eks-specific variables
+}
+```
+ 
+With this structure, `tilth inspect ./infra` picks up `vpc_cidr_block` (and every other root-declared variable across all your modules), prompts for it once, and writes it into a single `.tfvars.json` that satisfies every module underneath — not just one.
+ 
+### Provisioning a single module
+ 
+Since the generated `.tfvars.json` contains variables for *all* modules under the root, you can still scope an operation to just one module using Terraform's native `-target` flag, passed through after `--`:
+ 
+```bash
+# Only apply the vpc module, even though variables for eks etc. were also prompted for
+tilth apply ./infra -- -target=module.vpc
+```
+ 
+This is useful when you want the convenience of one prompt/one `.tfvars.json` for the whole root config, but need to stage changes module-by-module (e.g. bring up networking before compute).
+ 
+> **Note:** this pattern is specifically a consequence of `tilth`'s shallow-scan design — if you restructure your modules or add new ones, remember to add matching root-level variables and wiring, or `tilth` won't discover the new inputs.
+
 ## Contributing
 
 Issues and pull requests are welcome. If you run into a bug or have a feature request, please [open an issue](https://github.com/Aaqeb11/tilth/issues).
